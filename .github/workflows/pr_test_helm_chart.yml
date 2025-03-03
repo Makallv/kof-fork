@@ -33,12 +33,13 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
-          cache: false
+          cache: true
       - name: Unit tests for KOF Operator
         working-directory: ./kof-operator
         run: |
           make test
           cache: true
+
       - name: Run Unit Tests
         working-directory: ./promxy-operator
         run: make test
