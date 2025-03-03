@@ -11,7 +11,7 @@ on:
       - main
       - release-*
     paths:
-      - "kof-operator/**"
+      - "promxy-operator/**"
       - "charts/**"
       - "!**.md"
 
@@ -19,60 +19,111 @@ env:
   GO_VERSION: "1.23"
 
 jobs:
-  test-and-deploy:
-    name: Test and Deploy KOF & KCM
+  test:
+    name: Run Unit Tests
     runs-on: ubuntu-latest
     steps:
-      - name: Get PR ref
-        uses: actions/github-script@v7
-        id: pr
-        with:
-          script: |
-            const { data: pullRequest } = await github.rest.pulls.get({
-              ...context.repo,
-              pull_number: context.payload.pull_request.number,
-            });
-            return pullRequest
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: ${{fromJSON(steps.pr.outputs.result).merge_commit_sha}}
+          ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
+
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
-          cache: false
-      - name: Unit tests for KOF Operator
-        working-directory: ./kof-operator
-        run: |
-          make test
+          cache: true
+
+      - name: Run Unit Tests
+        working-directory: ./promxy-operator
+        run: make test
+
+  test-and-deploy:
+    name: Test and Deploy
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
       - name: Create Kind Cluster
         uses: helm/kind-action@v1.8.0
         with:
           version: v0.23.0
           cluster_name: kof-cluster
+
       - name: Checkout KCM repository
         uses: actions/checkout@v4
         with:
           repository: k0rdent/kcm
           ref: main
           path: kcm-repo
+
+      - name: Cache KCM CLI Install
+        id: cache-kcm-cli-install
+        uses: actions/cache@v3
+        with:
+          path: ~/.local/bin
+          key: kcm-cli-install-${{ runner.os }}-${{ github.sha }}
+          restore-keys: |
+            kcm-cli-install-${{ runner.os }}-
+
       - name: Install KCM CLI
-        run: |
-          make -C kcm-repo cli-install
-      - name: Apply KCM Dev Configuration
-        run: |
-          make -C kcm-repo dev-apply
+        if: steps.cache-kcm-cli-install.outputs.cache-hit != 'true'
+        run: make -C kcm-repo cli-install
+
+      - name: Cache KCM Dev Apply
+        id: cache-kcm-dev-apply
+        uses: actions/cache@v3
+        with:
+          path: ~/.kcm-dev-apply-cache
+          key: kcm-dev-apply-${{ runner.os }}-${{ github.sha }}
+          restore-keys: |
+            kcm-dev-apply-${{ runner.os }}-
+
+      - name: Apply KCM Dev
+        if: steps.cache-kcm-dev-apply.outputs.cache-hit != 'true'
+        run: make -C kcm-repo dev-apply
+
+      - name: Cache KOF CLI Install
+        id: cache-kof-cli-install
+        uses: actions/cache@v3
+        with:
+          path: ~/.local/bin
+          key: kof-cli-install-${{ runner.os }}-${{ github.sha }}
+          restore-keys: |
+            kof-cli-install-${{ runner.os }}-
+
       - name: Install KOF CLI
-        run: |
-          make cli-install 
+        if: steps.cache-kof-cli-install.outputs.cache-hit != 'true'
+        run: make cli-install
+
+      - name: Cache Helm Charts
+        id: cache-helm
+        uses: actions/cache@v3
+        with:
+          path: ~/.helm-cache
+          key: helm-cache-${{ github.sha }}
+          restore-keys: |
+            helm-cache-
+
       - name: Push KOF Helm Charts
-        run: |
-          make helm-push
+        if: steps.cache-helm.outputs.cache-hit != 'true'
+        run: make helm-push
+
       - name: Deploy KOF Components
         run: |
           make dev-operators-deploy
-          make dev-ms-deploy
+          make dev-ms-deploy-cloud
           make dev-storage-deploy
           make dev-collectors-deploy
