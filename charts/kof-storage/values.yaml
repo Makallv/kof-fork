@@ -6,6 +6,7 @@ global:
 
   # https://kubernetes.io/docs/concepts/storage/storage-classes/#default-storageclass
   # PR test #2
+  # PR test #3
   # storageClass: ebs-csi-default-sc
 
 cert-manager:
