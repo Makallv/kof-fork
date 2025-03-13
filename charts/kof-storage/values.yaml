@@ -8,6 +8,7 @@ global:
   # PR
   # PR test 
   # PR
+  # PR
   # storageClass: ebs-csi-default-sc
 
 cert-manager:
