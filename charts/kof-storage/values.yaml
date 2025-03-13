@@ -5,6 +5,10 @@ global:
   random_password_length: 12
 
   # https://kubernetes.io/docs/concepts/storage/storage-classes/#default-storageclass
+  # PR
+  # PR test 
+  # PR
+  # PR
   # storageClass: ebs-csi-default-sc
 
 cert-manager:
