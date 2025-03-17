@@ -83,8 +83,7 @@ jobs:
           make helm-push
       - name: Deploy KOF Components
         run: |
-          make dev-operators-deploy
-          make dev-ms-deploy
-          make dev-storage-deploy
-          make dev-collectors-deploy
-          
+          make dev-operators-deploy ARGS="--wait --timeout 5m"
+          make dev-ms-deploy ARGS="--wait --timeout 5m"
+          make dev-storage-deploy ARGS="--wait --timeout 5m"
+          make dev-collectors-deploy ARGS="--wait --timeout 5m"
