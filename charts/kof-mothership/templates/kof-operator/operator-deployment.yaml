@@ -56,7 +56,9 @@ spec:
         env:
           - name: "PROMXY_RELOAD_ENDPOINT"
             value: "http://{{ .Release.Name }}-promxy:{{ .Values.promxy.service.servicePort }}/-/reload"
-        image: "{{ .Values.kcm.kof.operator.image.repository }}:{{ .Values.kcm.kof.operator.image.tag }}"
+          - name: "RELEASE_NAMESPACE"
+            value: {{ .Release.Namespace }}
+        image: "{{ .Values.kcm.kof.operator.image.repository }}:v{{ .Chart.Version }}"
         imagePullPolicy: {{ .Values.kcm.kof.operator.image.pullPolicy }}
         livenessProbe:
           failureThreshold: 6

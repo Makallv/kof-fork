@@ -21,9 +21,9 @@ cert-manager:
   # -- Whether cert-manager is present in the cluster
   enabled: true
   cluster-issuer:
-  # -- Whether to create a default clusterissuer
+    # -- Whether to create a default clusterissuer
     create: false
-  # -- Default clusterissuer provider
+    # -- Default clusterissuer provider
     provider: letsencrypt
   # -- If we use letsencrypt (or similar) which email to use
   email: mail@example.net
@@ -33,7 +33,7 @@ kcm:
   namespace: kcm-system
 
   # -- Auto-installs `ServiceTemplate`-s like `cert-manager` and `kof-storage`
-  # to reference them from Regional and Child `ClusterDeployment`-s.
+  # to reference them from `MultiClusterService` and `ClusterDeployment`.
   installTemplates: false
 
   serviceMonitor:
@@ -46,19 +46,7 @@ kcm:
       name: kof
       type: oci
       url: oci://ghcr.io/k0rdent/kof/charts
-      insecure: false
 
-    # -- Versions of `kof-*` helm charts and related `ServiceTemplate`-s
-    # auto-installed by `kcm.installTemplates`.
-    charts:
-      operators:
-        version: "0.1.1"
-      collectors:
-        version: "0.1.1"
-      storage:
-        version: "0.1.1"
-      istio:
-        version: "0.1.1"
     # -- Names of secrets auto-distributed to clusters with matching labels.
     clusterProfiles:
       kof-storage-secrets:
@@ -80,19 +68,18 @@ kcm:
       # -- Image of the kof operator.
       image:
         repository: ghcr.io/k0rdent/kof/kof-operator-controller
-        tag: "latest"
         pullPolicy: IfNotPresent
 
       resources:
         # -- Minimum resources required for operator.
         requests:
           cpu: 100m
-          memory: 64Mi
+          memory: 128Mi
 
         # -- Maximum resources available for operator.
         limits:
           cpu: 100m
-          memory: 64Mi
+          memory: 128Mi
 
       serviceAccount:
         # -- Creates a service account for operator.
@@ -131,6 +118,11 @@ victoriametrics:
       storage:
         # -- Long-term storage size of raw time series data.
         size: 10Gi
+    
+    vminsert:
+      labels:
+        # -- Label to enable mtls
+        k0rdent.mirantis.com/istio-mtls-enabled: "true"
 
   vmalert:
     # -- Enables VictoriaMetrics alerts.
@@ -162,7 +154,6 @@ grafana:
     enabled: true
 
   # -- Old option to add `GrafanaDatasource`-s.
-  # Please add them as in [the docs](https://docs.k0rdent.io/head/admin-kof/#regional-cluster) instead.
   logSources: []
 
   security:
@@ -183,10 +174,18 @@ grafana:
     datasource:
       # -- Regex pattern to filter datasources.
       regex: "/promxy/"
+      
+      # -- Values of current datasource
+      current:
+        text: promxy
+        value: promxy
 
     # -- Values of filters to apply.
     filters:
       clusterName: mothership
+
+    # -- Enables istio dashboards
+    istio_dashboard_enabled: true
 
 # -- [Docs](https://github.com/VictoriaMetrics/helm-charts/tree/master/charts/victoria-metrics-operator#parameters)
 victoria-metrics-operator:

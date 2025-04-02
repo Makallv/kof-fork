@@ -1,6 +1,6 @@
 # kof-mothership
 
-![Version: 0.1.1](https://img.shields.io/badge/Version-0.1.1-informational?style=flat-square) ![AppVersion: 0.1.1](https://img.shields.io/badge/AppVersion-0.1.1-informational?style=flat-square)
+![Version: 0.2.0](https://img.shields.io/badge/Version-0.2.0-informational?style=flat-square) ![AppVersion: 0.2.0](https://img.shields.io/badge/AppVersion-0.2.0-informational?style=flat-square)
 
 A Helm chart that deploys Grafana, Promxy, and VictoriaMetrics.
 
@@ -28,29 +28,30 @@ A Helm chart that deploys Grafana, Promxy, and VictoriaMetrics.
 | global<br>.random_username_length | int | `8` | Length of the auto-generated usernames for Grafana and VictoriaMetrics. |
 | global<br>.storageClass | string | `""` | Name of the storage class used by Grafana, `vmstorage` (long-term storage of raw time series data), and `vmselect` (cache of query results). Keep it unset or empty to leverage the advantages of [default storage class](https://kubernetes.io/docs/concepts/storage/storage-classes/#default-storageclass). |
 | grafana<br>.alerts<br>.enabled | bool | `true` | Creates [VMRule](https://docs.victoriametrics.com/operator/resources/vmrule/)-s based on [files/rules/](files/rules/). |
+| grafana<br>.dashboard<br>.datasource<br>.current | object | `{"text":"promxy",`<br>`"value":"promxy"}` | Values of current datasource |
 | grafana<br>.dashboard<br>.datasource<br>.regex | string | `"/promxy/"` | Regex pattern to filter datasources. |
 | grafana<br>.dashboard<br>.filters | object | `{"clusterName":"mothership"}` | Values of filters to apply. |
+| grafana<br>.dashboard<br>.istio_dashboard_enabled | bool | `true` | Enables istio dashboards |
 | grafana<br>.enabled | bool | `true` | Enables Grafana. |
 | grafana<br>.ingress<br>.enabled | bool | `false` | Enables an ingress to access Grafana without port-forwarding. |
 | grafana<br>.ingress<br>.host | string | `"grafana.example.net"` | Domain name Grafana will be available at. |
-| grafana<br>.logSources | list | `[]` | Old option to add `GrafanaDatasource`-s. Please add them as in [the docs](https://docs.k0rdent.io/head/admin-kof/#regional-cluster) instead. |
+| grafana<br>.logSources | list | `[]` | Old option to add `GrafanaDatasource`-s. |
 | grafana<br>.security<br>.create_secret | bool | `true` | Enables auto-creation of Grafana username/password. |
 | grafana<br>.security<br>.credentials_secret_name | string | `"grafana-admin-credentials"` | Name of secret for Grafana username/password. |
 | grafana<br>.storage<br>.size | string | `"200Mi"` | Size of storage for Grafana. |
 | grafana<br>.version | string | `"10.4.7"` | Version of Grafana to use. |
-| kcm<br>.installTemplates | bool | `false` | Auto-installs `ServiceTemplate`-s like `cert-manager` and `kof-storage` to reference them from Regional and Child `ClusterDeployment`-s. |
-| kcm<br>.kof<br>.charts | object | `{"collectors":{"version":"0.1.1"},`<br>`"istio":{"version":"0.1.1"},`<br>`"operators":{"version":"0.1.1"},`<br>`"storage":{"version":"0.1.1"}}` | Versions of `kof-*` helm charts and related `ServiceTemplate`-s auto-installed by `kcm.installTemplates`. |
+| kcm<br>.installTemplates | bool | `false` | Auto-installs `ServiceTemplate`-s like `cert-manager` and `kof-storage` to reference them from `MultiClusterService` and `ClusterDeployment`. |
 | kcm<br>.kof<br>.clusterProfiles | object | `{"kof-storage-secrets":{"create_secrets":true,`<br>`"matchLabels":{"k0rdent.mirantis.com/kof-storage-secrets":"true"},`<br>`"secrets":["storage-vmuser-credentials"]}}` | Names of secrets auto-distributed to clusters with matching labels. |
 | kcm<br>.kof<br>.operator<br>.enabled | bool | `true` |  |
-| kcm<br>.kof<br>.operator<br>.image | object | `{"pullPolicy":"IfNotPresent",`<br>`"repository":"ghcr.io/k0rdent/kof/kof-operator-controller",`<br>`"tag":"latest"}` | Image of the kof operator. |
+| kcm<br>.kof<br>.operator<br>.image | object | `{"pullPolicy":"IfNotPresent",`<br>`"repository":"ghcr.io/k0rdent/kof/kof-operator-controller"}` | Image of the kof operator. |
 | kcm<br>.kof<br>.operator<br>.rbac<br>.create | bool | `true` | Creates the `kof-mothership-kof-operator` cluster role and binds it to the service account of operator. |
 | kcm<br>.kof<br>.operator<br>.replicaCount | int | `1` |  |
-| kcm<br>.kof<br>.operator<br>.resources<br>.limits | object | `{"cpu":"100m",`<br>`"memory":"64Mi"}` | Maximum resources available for operator. |
-| kcm<br>.kof<br>.operator<br>.resources<br>.requests | object | `{"cpu":"100m",`<br>`"memory":"64Mi"}` | Minimum resources required for operator. |
+| kcm<br>.kof<br>.operator<br>.resources<br>.limits | object | `{"cpu":"100m",`<br>`"memory":"128Mi"}` | Maximum resources available for operator. |
+| kcm<br>.kof<br>.operator<br>.resources<br>.requests | object | `{"cpu":"100m",`<br>`"memory":"128Mi"}` | Minimum resources required for operator. |
 | kcm<br>.kof<br>.operator<br>.serviceAccount<br>.annotations | object | `{}` | Annotations for the service account of operator. |
 | kcm<br>.kof<br>.operator<br>.serviceAccount<br>.create | bool | `true` | Creates a service account for operator. |
 | kcm<br>.kof<br>.operator<br>.serviceAccount<br>.name | string | `nil` | Name for the service account of operator. If not set, it is generated as `kof-mothership-kof-operator`. |
-| kcm<br>.kof<br>.repo | object | `{"insecure":false,`<br>`"name":"kof",`<br>`"type":"oci",`<br>`"url":"oci://ghcr.io/k0rdent/kof/charts"}` | Repo of `kof-*` helm charts. |
+| kcm<br>.kof<br>.repo | object | `{"name":"kof",`<br>`"type":"oci",`<br>`"url":"oci://ghcr.io/k0rdent/kof/charts"}` | Repo of `kof-*` helm charts. |
 | kcm<br>.namespace | string | `"kcm-system"` | K8s namespace created on installation of k0rdent/kcm. |
 | kcm<br>.serviceMonitor<br>.enabled | bool | `true` | Enables the "KCM Controller Manager" Grafana dashboard. |
 | promxy<br>.configmapReload<br>.resources<br>.limits | object | `{"cpu":0.02,`<br>`"memory":"20Mi"}` | Maximum resources available for the `promxy-server-configmap-reload` container in the pods of `kof-mothership-promxy` deployment. |
@@ -78,6 +79,7 @@ A Helm chart that deploys Grafana, Promxy, and VictoriaMetrics.
 | victoriametrics<br>.vmcluster<br>.replicaCount | int | `1` | The number of replicas for components of cluster. |
 | victoriametrics<br>.vmcluster<br>.replicationFactor | int | `1` | The number of replicas for each metric. |
 | victoriametrics<br>.vmcluster<br>.retentionPeriod | string | `"1"` | Days to retain the data. |
+| victoriametrics<br>.vmcluster<br>.vminsert<br>.labels<br>."k0rdent<br>.mirantis<br>.com/istio-mtls-enabled" | string | `"true"` | Label to enable mtls |
 | victoriametrics<br>.vmcluster<br>.vmselect<br>.storage<br>.size | string | `"2Gi"` | Query results cache size. |
 | victoriametrics<br>.vmcluster<br>.vmstorage<br>.storage<br>.size | string | `"10Gi"` | Long-term storage size of raw time series data. |
 

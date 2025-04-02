@@ -1,0 +1,71 @@
+apiVersion: k0rdent.mirantis.com/v1alpha1
+kind: MultiClusterService
+metadata:
+  name: kof-regional-cluster
+spec:
+  clusterSelector:
+    matchLabels:
+      k0rdent.mirantis.com/kof-cluster-role: regional
+    matchExpressions:
+      - key: "k0rdent.mirantis.com/istio-role"
+        operator: DoesNotExist
+
+  serviceSpec:
+    services:
+
+      - name: cert-manager
+        namespace: {{ .Release.Namespace }}
+        template: cert-manager-1-16-2
+        values: |
+          cert-manager:
+            crds:
+              enabled: true
+
+      - name: ingress-nginx
+        namespace: {{ .Release.Namespace }}
+        template: ingress-nginx-4-11-3
+
+      - name: kof-storage
+        namespace: {{ .Release.Namespace }}
+        template: kof-storage-{{ .Chart.Version | replace "." "-" }}
+        values: |
+          {{`{{ $storageClass := index .Cluster.metadata.annotations "k0rdent.mirantis.com/kof-storage-class" | default "" }}`}}
+          {{`{{ $regionalDomain := index .Cluster.metadata.annotations "k0rdent.mirantis.com/kof-regional-domain" }}`}}
+          {{`{{ $tracesEnabled := not (index .Cluster.metadata.annotations "k0rdent.mirantis.com/kof-write-traces-endpoint") }}`}}
+          {{`{{ $tracesHost := $tracesEnabled | ternary (printf "jaeger.%s" $regionalDomain) "" }}`}}
+          {{`{{ $metricsEnabled := not (index .Cluster.metadata.annotations "k0rdent.mirantis.com/kof-write-metrics-endpoint") }}`}}
+          {{`{{ $metricsHost := $metricsEnabled | ternary (printf "vmauth.%s" $regionalDomain) "" }}`}}
+          {{`{{ $grafanaHost := printf "grafana.%s" $regionalDomain }}`}}
+          {{`{{ $certEmail := index .Cluster.metadata.annotations "k0rdent.mirantis.com/kof-cert-email" }}`}}
+          {{`{{ $patch := index .Cluster.metadata.annotations "k0rdent.mirantis.com/kof-storage-values" | default "{}" | fromYaml }}`}}
+          {{`{{ $values := printf `}}`{{`
+          global:
+            storageClass: %q
+          victoria-logs-single:
+            server:
+              persistentVolume:
+                storageClassName: %q
+          external-dns:
+            enabled: true
+          jaeger:
+            ingress:
+              enabled: %t
+              host: %q
+          victoriametrics:
+            vmauth:
+              ingress:
+                enabled: %t
+                host: %q
+            security:
+              username_key: username
+              password_key: password
+              credentials_secret_name: storage-vmuser-credentials
+          grafana:
+            ingress:
+              host: %q
+            security:
+              credentials_secret_name: grafana-admin-credentials
+          cert-manager:
+            email: %q
+          `}}`{{` $storageClass $storageClass $tracesEnabled $tracesHost $metricsEnabled $metricsHost $grafanaHost $certEmail | fromYaml }}`}}
+          {{`{{ mergeOverwrite $values $patch | toYaml | nindent 4 }}`}}
