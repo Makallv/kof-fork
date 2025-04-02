@@ -1,0 +1,83 @@
+name: KOF Version Upgrade
+
+on:
+  pull_request:
+    branches:
+      - main
+      - release/*
+    paths:
+      - "kof-operator/**"
+      - "charts/**"
+      - "!**.md"
+
+env:
+  GO_VERSION: "1.23"
+
+jobs:
+  deploy:
+    name: Deploy KOF & KCM for Versions 0.1.1 and 0.2.0
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        kof_version: ["0.1.1", "0.2.0"]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  
+      - name: Fetch PR Ref and Checkout Repo
+        uses: ./.github/actions/fetch-pr-ref
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - name: Checkout KCM repository
+        uses: actions/checkout@v4
+        with:
+          repository: k0rdent/kcm
+          ref: main
+          path: kcm-repo
+      - name: Restore KCM CLI Cache
+        id: cache-kcm-cli
+        uses: actions/cache/restore@v4
+        with:
+          path: kcm-repo/bin
+          key: kcm-cli-${{ runner.os }}-${{ github.sha }}
+          restore-keys: |
+            kcm-cli-${{ runner.os }}-
+      - name: Install KCM CLI
+        run: |
+          make -C kcm-repo cli-install
+      - name: Save KCM CLI Cache
+        uses: actions/cache/save@v4
+        with:
+          path: kcm-repo/bin
+          key: kcm-cli-${{ runner.os }}-${{ github.sha }}-${{ github.run_id }}
+      - name: Apply KCM Dev Configuration
+        run: |
+          make -C kcm-repo dev-apply
+      - name: Switch to KOF Version ${{ matrix.kof_version }}
+        run: |
+          git checkout tags/${{ matrix.kof_version }} -b temp-${{ matrix.kof_version }}
+      - name: Install KOF CLI
+        run: |
+          make cli-install 
+      - name: Deploy local registry container
+        run: |
+          make registry-deploy 
+      - name: Push KOF Helm Charts
+        run: |
+          make helm-push
+      - name: Deploy KOF Components
+        run: |
+          make dev-operators-deploy
+          make dev-ms-deploy-cloud
+          make dev-storage-deploy
+          make dev-collectors-deploy
+      - name: Cleanup temporary branches
+        if:
+          always()
+        run: |
+          git checkout main || true
+          git branch -D temp-${{ matrix.kof_version }} || true
+
